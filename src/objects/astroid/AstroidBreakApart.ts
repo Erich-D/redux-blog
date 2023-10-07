@@ -16,6 +16,9 @@ export default class AstroidBreakApart extends Game{
     reqRad: number = 1
     create: any;
     add: any;
+    breakSpeed:number = 6
+    breakArray:any[]
+    frame:number = 0
     constructor(arg:Asteroid){
         super(
             arg.position.x,
@@ -35,8 +38,11 @@ export default class AstroidBreakApart extends Game{
         this.add = arg.addScore
         //this.scaler = this.radius/AstroidConstants.getIndex(this.id)!.radius
         this.spawnlings = []
+        this.breakArray = AstroidConstants.table.locs[arg.id-1].explode
         this.spawn()
-        
+        for(let i=0;i<this.spawnlings.length;i++){
+            this.spawnlings[i].velocity = arg.velocity
+        }
     }
 
     spawn(){
@@ -67,6 +73,9 @@ export default class AstroidBreakApart extends Game{
         // get radius of circle required to hold spawned asteroids
         const neededRad = getLargeCircleAroundSmall(maxRadius,num)
         this.reqRad = neededRad
+        for(let i=0;i<num;i++){
+            this.spawnlings[i].scaler *= sRadius/this.spawnlings[i].radius
+        }
         const direction = this.getRadians()
         const distance = this.velocity.x / Math.cos(direction)
         // console.log("radians = "+radiansToDegrees(direction)+" velocity is x: "+this.velocity.x+" y: "+this.velocity.y)
@@ -78,13 +87,16 @@ export default class AstroidBreakApart extends Game{
     }
 
     updateRadius(inc:number){
-        this.radius += inc
+        this.radius += inc 
+        //this.radius = (this.radius >= this.reqRad) ? this.reqRad:this.radius
         const r = getSmallCirclesInLarge(this.radius,this.spawnlings.length)
         const circRad = this.radius-r
         for(let i=0;i<this.spawnlings.length;i++){
             //const id = this.select()
             const angleCoords = rotatePoint({x:-circRad,y:0},{x:0,y:0},i*(2*Math.PI/this.spawnlings.length))
             this.spawnlings[i].position = {x:angleCoords.x+this.position.x, y:angleCoords.y+this.position.y}
+            this.spawnlings[i].scaler = Math.min(this.spawnlings[i].scale * r/this.spawnlings[i].radius,this.spawnlings[i].scale)
+            //this.spawnlings[i].radius = this.spawnlings[i].scaler * AstroidConstants.getIndex(this.spawnlings[i].id).radius * AstroidConstants.getIndex(this.spawnlings[i].id).initScale
         }
     }
 
@@ -98,15 +110,18 @@ export default class AstroidBreakApart extends Game{
     }
 
     render(state:AstroidsState): void {
+        this.inc++
+        if(this.inc%this.breakSpeed === 0){this.frame++}
+        console.log(`modulus: ${this.life} fram: ${this.radius} req: ${this.reqRad}`) 
         if(this.life-- < 0 || this.radius >= this.reqRad){
             //console.log("cur rad "+this.radius+" target rad "+this.reqRad)
             for(let i=0;i<this.spawnlings.length;i++){
-                this.create(this.spawnlings[i],"asteroids")
+                //this.create(this.spawnlings[i],"asteroids")
             }
             this.destroy()
         }
 
-        this.updateRadius(0.5)
+        this.updateRadius(1)
 
         // Screen edges
         if(this.position.x > state.screen.width + this.radius) this.position.x = -this.radius;
@@ -123,33 +138,37 @@ export default class AstroidBreakApart extends Game{
         context.strokeStyle = '#0FF';
         context.beginPath();
         context.moveTo(0, 0);
-        context.lineTo(this.velocity.x*2, this.velocity.y*2);
+        context.lineTo(this.velocity.x*20, this.velocity.y*20);
         context.stroke();
         context.strokeStyle = '#F0F';
         context.beginPath();
         context.moveTo(0, 0);
-        context.lineTo(50*Math.cos(this.getRadians()), 50*Math.sin(this.getRadians()));
+        context.lineTo(500*Math.cos(this.getRadians()), 500*Math.sin(this.getRadians()));
         context.stroke();
         //let deg = Math.atan(this.velocity.x/this.velocity.y)
         //if(this.velocity.y>0){deg += Math.PI}
         //console.log("small r: "+deg+" big R: "+(-deg))
         context.rotate(this.getRadians());//this.rotation * Math.PI / 180
-        
-
-        // draw hitbox
-        const circRad = this.radius-r
-        context.strokeStyle = '#0FF';
-        context.lineWidth = 4;
-        for(let i= 0;i<this.spawnlings.length;i++){
-            let newCenter = rotatePoint({x:-circRad,y:0},{x:0,y:0},i*degreesToRadians(360/this.spawnlings.length))
+        if(this.frame<this.breakArray.length){
+            const img = this.breakArray[this.frame]
+            console.log(img)
+            context.drawImage(AstroidConstants.sheet, img[0], img[1], img[2], img[3], img[4], img[5], img[6], img[7])
+        }else{
+            // draw hitbox
+            const circRad = this.radius-r
+            context.strokeStyle = '#0FF';
+            context.lineWidth = 4;
+            for(let i= 0;i<this.spawnlings.length;i++){
+                let newCenter = rotatePoint({x:-circRad,y:0},{x:0,y:0},i*degreesToRadians(360/this.spawnlings.length))
+                context.beginPath()
+                context.arc(newCenter.x, newCenter.y, r, 0, 2 * Math.PI)
+                context.stroke()
+            }
+            context.beginPath();
+            context.arc(0, 0, this.radius, 0, 2 * Math.PI)
+            context.stroke();
             context.beginPath()
-            context.arc(newCenter.x, newCenter.y, r, 0, 2 * Math.PI)
-            context.stroke()
         }
-        context.beginPath();
-        context.arc(0, 0, this.radius, 0, 2 * Math.PI)
-        context.stroke();
-        context.beginPath()
         // context.arc(-circRad, 0, r, 0, 2 * Math.PI)
         // context.stroke()
         // context.beginPath()
@@ -164,14 +183,12 @@ export default class AstroidBreakApart extends Game{
         // context.lineWidth = 6;
         //context.save()
         //context.scale(1,1)
-        for(let i= 0;i<this.spawnlings.length;i++){
-            const sprite = this.spawnlings[i]
-            context.beginPath()
-            context.arc(sprite.position.x, sprite.position.y, 6, 0, 2 * Math.PI)
-            context.stroke()
-            // draw image sprite
-            sprite.render(state)
-        }
+        // for(let i= 0;i<this.spawnlings.length;i++){
+        //     const sprite = this.spawnlings[i]
+        //     //  
+        //     // draw image sprite
+        //     sprite.render(state)
+        // }
         //context.restore()
     }
     updatePos(seconds: number): void {
@@ -189,8 +206,8 @@ export default class AstroidBreakApart extends Game{
     destroy(impactVector?: { x: number; y: number; } | undefined): void {
         if(this.life<0 || this.radius >= this.reqRad){
             // send shock waves to children asteroids velocity vectors
-            const shock = new Shockwave({x:this.position.x, y:this.position.y, vx:this.velocity.x, vy:this.velocity.y, rad:this.radius,create:this.create})
-            this.create(shock, "asteroids")
+            //const shock = new Shockwave({x:this.position.x, y:this.position.y, vx:this.velocity.x, vy:this.velocity.y, rad:this.radius,create:this.create})
+            //this.create(shock, "asteroids")
             this.delete = true;
         }
     }

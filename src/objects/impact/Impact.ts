@@ -13,7 +13,7 @@ interface ImpactAgrs{
 
 export default class Impact extends Game{
     inc: number = 0
-    scale:number = 1/3
+    scale:number = 1/12
     sprites: GameSprite[];
     inertia: number;
     sNum: number;

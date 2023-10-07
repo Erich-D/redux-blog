@@ -9,7 +9,7 @@ const store = configureStore({
     reducer:{
         location:geoLocationReducer,
         flashMessage:flashMessageReducer,
-        astroids:astroidsReducer,
+        //astroids:astroidsReducer,
        // weather:weatherReducer,
         [blogApi.reducerPath]: blogApi.reducer,
     },

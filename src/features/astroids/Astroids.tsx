@@ -1,19 +1,13 @@
-import { MutableRefObject, useCallback, useEffect, useRef, useState } from "react"
+import { MutableRefObject, useEffect, useRef, useState } from "react"
 import Canvas from "../../components/canvas/Canvas"
-import { useAppDispatch, useAppSelector } from "../../store/hooks"
-import { selectScore, selectScreen, selectTopScore, setStartGame, selectKeys, selectAstroidCount, setGameOver, setTopScore, PlayKeys, ScreenInfo, setLeftKey, setRightKey, setUpKey, setSpaceKey, AstroidsState, initialState } from "./astroidsSlice"
-import space from "../../space.jpg"
-import styles from "./astroidsStyle.module.css"
+import { PlayKeys, ScreenInfo, AstroidsState, initialState } from "./astroidsSlice"
 import useKeyPress from "../../hooks/UseKeyPress"
 import Ship from "../../objects/ship/Ship"
-import { shallowEqual } from "react-redux"
 import Asteroid from "../../objects/astroid/Astroid"
-import { randomNumBetween, randomNumBetweenExcluding } from "../../objects/helpers/helpers"
-import Bullet from "../../objects/bullet/Bullet"
-import Particle from "../../objects/particle/Particle"
+import { randomNumBetween } from "../../objects/helpers/helpers"
 import Game from "../../objects/game/Game"
-import Impact from "../../objects/impact/Impact"
 import AstroidBreakApart from "../../objects/astroid/AstroidBreakApart"
+import { AstroidConstants } from "../../objects/astroid/AstroidConstants"
 
 interface AstroidProps{
     width:number
@@ -35,6 +29,8 @@ export default function Astroids(){
     const mouseRef = useRef(mouseState)
     const cpRef = useRef(cPoints)
     const cr = useRef(null)
+    //TODO remove sprite canvas from state and set ref so it's referance doesn't change with state
+    const asteroidSprites = useRef<HTMLCanvasElement>(document.createElement('canvas'))
     // references to game objects
     const ships = useRef<Ship[]>([])            
     const astroids = useRef<Game[]>([])
@@ -142,11 +138,11 @@ export default function Astroids(){
         ctx.fillText(`Use [A][S][W][D] or [←][↑][↓][→] to MOVE`, ctx.canvas.width/2, 15)
         ctx.fillText(`Use [SPACE] to SHOOT`, ctx.canvas.width/2, 35)
         ctx.strokeStyle = '#0FF';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1;
         for(let i=0;i<points.current.length;i++){
             // draw center
             ctx.beginPath();
-            ctx.arc(points.current[i].x, points.current[i].y, 5, 0, 2 * Math.PI)
+            ctx.arc(points.current[i].x, points.current[i].y, 1, 0, 2 * Math.PI)
             ctx.fill();
         }
         //motion trail for line drawn objects
@@ -157,7 +153,7 @@ export default function Astroids(){
         //ctx.restore()
         // **********update game objects********
         // check for asteroids add more if none are left
-        if(astroids.current.length===0){setState(state=>({...state, astroidCount:state.astroidCount+1}));generateAsteroids(state.astroidCount)}//generateAsteroids(state.astroidCount)
+        //if(astroids.current.length===0){setState(state=>({...state, astroidCount:state.astroidCount+1}));generateAsteroids(state.astroidCount)}//generateAsteroids(state.astroidCount)
         // update position of game objects prior to collision detection
         if(ships.current.length > 0){moveObjects(ships,timePassed)}
         if(bullets.current.length > 0){moveObjects(bullets,timePassed)}
@@ -174,17 +170,23 @@ export default function Astroids(){
         if(particles.current.length > 0){updateObjects(particles)}
         ctx.setTransform(state.screen.ratio,0,0,state.screen.ratio,0,0)
         ctx.strokeStyle = '#0FF';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1;
         for(let i=0;i<points.current.length;i++){
             // draw center
             ctx.beginPath();
-            ctx.arc(points.current[i].x, points.current[i].y, 5, 0, 2 * Math.PI)
+            ctx.arc(points.current[i].x, points.current[i].y, 1, 0, 2 * Math.PI)
             ctx.fill();
         }
+        //ctx.restore()
+        //ctx.save()
+        // ctx.setTransform(.4,0,0,.4,0,0)
+        // ctx.drawImage(AstroidConstants.sheet,0,0)
         //ctx.restore()
     }
 
     function start(){
+        // steup sprite sheets
+        createSpriteSheets()
         if(cr.current){
             console.log("starting up")
             const cvs:HTMLCanvasElement = cr.current
@@ -212,7 +214,7 @@ export default function Astroids(){
                 create: createObject,
                 addScore: addScore
                 });
-            asteroid.velocity = {x:0,y:0}
+            asteroid.velocity = {x:10,y:10}
             asteroid.rotation = 0
             //asteroid.rotationSpeed = 0
             createObject(asteroid, 'asteroids');
@@ -279,7 +281,7 @@ export default function Astroids(){
             for (let i = 0; i < howMany; i++) {
                 if(!quads.includes(test)){quads.push(test)}
                 let asteroid = new Asteroid({
-                size: 1,//Math.round(randomNumBetween(5,1)),
+                size: 2,//Math.round(randomNumBetween(5,1)),
                 position: {
                     x: 520,//randomNumBetweenExcluding(0, stateRef.current.screen.width, ship.position.x-60, ship.position.x+60),
                     y: 520//randomNumBetweenExcluding(0, stateRef.current.screen.height, ship.position.y-60, ship.position.y+60)
@@ -440,12 +442,18 @@ export default function Astroids(){
         setPoints([])
     }
 
+    function createSpriteSheets() {
+        AstroidConstants.buildSprites()
+    }
+
     return<>
         <div style={{width:'100%'}}>
-            <Canvas ref={cr} callback={()=>{}} />
-            <p>{`{x:${state.context ? state.context!.canvas.width:"no data"} y:${state.context ? state.context!.canvas.height:"no data"}}`}</p><button onClick={submitCoords}>Submit</button><p>{`[${cpRef.current.map((item,index)=>{return `{x:${item.x}, y:${item.y}}`}).join(", ")}]`}</p>
+            <Canvas ref={cr} callback={null} />
+            <p>{`{x:${state.context ? state.context!.canvas.width:"no data"} y:${state.context ? state.context!.canvas.height:"no data"}} spritesheet w: ${asteroidSprites.current.width} h: ${asteroidSprites.current.height}`}</p><button onClick={submitCoords}>Submit</button><p>{`[${cpRef.current.map((item,index)=>{return `{x:${item.x}, y:${item.y}}`}).join(", ")}]`}</p>
         </div>
     </>
 }
+
+
 
 
