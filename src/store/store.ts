@@ -2,7 +2,6 @@ import { configureStore } from '@reduxjs/toolkit'
 import { setupListeners } from '@reduxjs/toolkit/query'
 import geoLocationReducer from '../features/location/geoLocationSlice'
 import flashMessageReducer from'../features/flashmessage/flashMessageSlice'
-import astroidsReducer from '../features/astroids/astroidsSlice'
 import { blogApi } from './blogApi'
 
 const store = configureStore({
